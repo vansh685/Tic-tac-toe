@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Tic-Tac-Toe 🎮</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  * {margin:0;padding:0;box-sizing:border-box;font-family:'Press Start 2P', cursive;}
+  body {display:flex;flex-direction:column;align-items:center;justify-content:flex-start;background:#0f0f0f;color:#00ffea;min-height:100vh;padding:10px;}
+  h1 {margin:15px;color:#ff0055;text-shadow:0 0 10px #ff0055,0 0 20px #ff00ff;font-size:22px;text-align:center;}
+  .mode-select, .difficulty {display:flex;gap:10px;margin:10px;}
+  button {padding:10px 15px;border:none;border-radius:10px;cursor:pointer;font-weight:bold;font-size:12px;transition:0.2s;color:#fff;background:linear-gradient(45deg,#ff0055,#ff00ff);text-shadow:0 0 5px #fff;}
+  button:hover {transform:scale(1.1);box-shadow:0 0 10px #ff00ff,0 0 20px #ff00ff;}
+  #board {display:grid;grid-template-columns:repeat(3,100px);grid-gap:8px;margin-top:20px;}
+  .cell {width:100px;height:100px;background:#111;border-radius:12px;display:flex;justify-content:center;align-items:center;font-size:40px;color:#00ffea;cursor:pointer;transition:0.2s;text-shadow:0 0 5px #00ffea;}
+  .cell:hover {background:#1c1c1c;transform:scale(1.05);}
+  .scoreboard {margin-top:15px;font-size:12px;text-align:center;}
+  #reset {margin-top:10px;background:linear-gradient(45deg,#ff7700,#ffbb00);}
+  #reset:hover {box-shadow:0 0 10px #ffbb00,0 0 20px #ff7700;transform:scale(1.1);}
+  .hidden {display:none;}
+</style>
+</head>
+<body>
+
+<h1>🎮 Neon Tic-Tac-Toe</h1>
+
+<div class="mode-select">
+  <button id="singleBtn">1 Player</button>
+  <button id="multiBtn">2 Players</button>
+</div>
+
+<div class="difficulty hidden" id="difficultyBtns">
+  <button data-level="easy">Easy</button>
+  <button data-level="medium">Medium</button>
+  <button data-level="hard">Hard</button>
+</div>
+
+<div id="board"></div>
+
+<div class="scoreboard">
+  <p id="score">Player X: 0 | Player O: 0</p>
+  <p id="status">Select a mode to start!</p>
+</div>
+
+<button id="reset">Reset Game</button>
+
+<audio id="clickSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+<audio id="winSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+<audio id="drawSound" src="https://actions.google.com/sounds/v1/cartoon/metal_hit.ogg"></audio>
+
+<script>
+const boardEl = document.getElementById("board");
+const statusEl = document.getElementById("status");
+const scoreEl = document.getElementById("score");
+const resetBtn = document.getElementById("reset");
+const difficultyBtns = document.getElementById("difficultyBtns");
+const singleBtn = document.getElementById("singleBtn");
+const multiBtn = document.getElementById("multiBtn");
+
+const clickSound = document.getElementById("clickSound");
+const winSound = document.getElementById("winSound");
+const drawSound = document.getElementById("drawSound");
+
+let board = ["","","","","","","","",""];
+let currentPlayer = "X";
+let gameActive = false;
+let singlePlayer = false;
+let difficulty = "easy";
+let scores = {X:0,O:0};
+
+function createBoard(){
+  boardEl.innerHTML = "";
+  board.forEach((_,i)=>{
+    const cell=document.createElement("div");
+    cell.classList.add("cell");
+    cell.dataset.index=i;
+    cell.addEventListener("click",handleCellClick);
+    boardEl.appendChild(cell);
+  });
+}
+
+function handleCellClick(e){
+  const idx=e.target.dataset.index;
+  if(!gameActive || board[idx]!=="") return;
+  board[idx]=currentPlayer;
+  e.target.textContent=currentPlayer;
+  clickSound.play();
+
+  if(checkWinner(board,currentPlayer)){
+    statusEl.textContent=currentPlayer==="X"?"Player X Wins!":"Player O Wins!";
+    scores[currentPlayer]++;
+    updateScore();
+    winSound.play();
+    gameActive=false;
+    return;
+  }
+
+  if(!board.includes("")){
+    statusEl.textContent="It's a Draw!";
+    drawSound.play();
+    gameActive=false;
+    return;
+  }
+
+  currentPlayer=currentPlayer==="X"?"O":"X";
+  statusEl.textContent=singlePlayer&&currentPlayer==="O"?"Computer's Turn":`Player ${currentPlayer}'s Turn`;
+
+  if(singlePlayer && currentPlayer==="O"){
+    setTimeout(aiMove,400);
+  }
+}
+
+function aiMove(){
+  let idx;
+  const avail = board.map((v,i)=>v===""?i:null).filter(v=>v!==null);
+  if(difficulty==="easy") idx = avail[Math.floor(Math.random()*avail.length)];
+  else if(difficulty==="medium") idx = avail.length>1?avail[1]:avail[0];
+  else idx = hardAI();
+  board[idx]="O";
+  document.querySelector(`[data-index='${idx}']`).textContent="O";
+  clickSound.play();
+
+  if(checkWinner(board,"O")){
+    statusEl.textContent="Computer Wins!";
+    scores.O++;
+    updateScore();
+    winSound.play();
+    gameActive=false;
+    return;
+  }
+
+  if(!board.includes("")){
+    statusEl.textContent="It's a Draw!";
+    drawSound.play();
+    gameActive=false;
+    return;
+  }
+
+  currentPlayer="X";
+  statusEl.textContent="Player X's Turn";
+}
+
+function hardAI(){return minimax(board,"O").index;}
+
+function minimax(newBoard,player){
+  const availSpots = newBoard.map((v,i)=>v===""?i:null).filter(v=>v!==null);
+  if(checkWinner(newBoard,"X")) return {score:-10};
+  if(checkWinner(newBoard,"O")) return {score:10};
+  if(availSpots.length===0) return {score:0};
+  const moves=[];
+  for(let i of availSpots){
+    const move={index:i};
+    newBoard[i]=player;
+    move.score=player==="O"?minimax(newBoard,"X").score:minimax(newBoard,"O").score;
+    newBoard[i]="";
+    moves.push(move);
+  }
+  return player==="O"?moves.reduce((a,b)=>a.score>b.score?a:b):moves.reduce((a,b)=>a.score<b.score?a:b);
+}
+
+function checkWinner(b,p){
+  const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  return wins.some(combo=>combo.every(i=>b[i]===p));
+}
+
+function updateScore(){scoreEl.textContent=`Player X: ${scores.X} | Player O: ${scores.O}`;}
+
+resetBtn.addEventListener("click",()=>{
+  board=["","","","","","","","",""];
+  createBoard();
+  gameActive=true;
+  currentPlayer="X";
+  statusEl.textContent="Player X's Turn";
+});
+
+singleBtn.addEventListener("click",()=>{
+  singlePlayer=true;
+  difficultyBtns.classList.remove("hidden");
+  statusEl.textContent="Choose Difficulty!";
+});
+
+multiBtn.addEventListener("click",()=>{
+  singlePlayer=false;
+  difficultyBtns.classList.add("hidden");
+  board=["","","","","","","","",""];
+  createBoard();
+  gameActive=true;
+  currentPlayer="X";
+  statusEl.textContent="Player X's Turn";
+});
+
+difficultyBtns.querySelectorAll("button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    difficulty=btn.dataset.level;
+    board=["","","","","","","","",""];
+    createBoard();
+    gameActive=true;
+    currentPlayer="X";
+    statusEl.textContent="Player X's Turn";
+  });
+});
+
+createBoard();
+</script>
+
+</body>
+</html>
