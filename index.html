@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Neon Tic Tac Toe</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&display=swap');
+:root{--bg:#071018;--panel:#0d1114;--neon1:linear-gradient(45deg,#ff0055,#ff00ff);--neon2:linear-gradient(45deg,#00ffd1,#00a3ff);--accent:#00ffd1}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 10% 10%,#081018,#020206 60%);color:#cbeefc;font-family:Orbitron,monospace;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:18px}
+.app{width:100%;max-width:460px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.02));padding:18px;border-radius:16px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+.header{display:flex;align-items:center;gap:12px}
+.icon{width:64px;height:64px;border-radius:12px;background:#000;box-shadow:0 6px 18px rgba(0,0,0,0.6) inset}
+.title{font-size:18px;color:#fff;text-shadow:0 0 10px rgba(255,0,170,0.2)}
+.controls{display:flex;gap:8px;margin-top:14px}
+.btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;color:#04141a;letter-spacing:0.6px}
+.btn.neon{background:var(--neon1);box-shadow:0 6px 20px rgba(255,0,170,0.12),0 0 40px rgba(255,0,170,0.08)}
+.btn.neon2{background:var(--neon2);box-shadow:0 6px 20px rgba(0,200,255,0.12)}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+.cell{aspect-ratio:1/1;background:linear-gradient(180deg,#0a0f12,#071019);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800;color:transparent;text-shadow:0 0 10px rgba(0,255,210,0.2);cursor:pointer;border:1px solid rgba(255,255,255,0.03);transition:transform .12s ease, box-shadow .12s}
+.cell:hover{transform:translateY(-6px);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+.cell.x{color:#ff6bd8;text-shadow:0 0 18px rgba(255,107,216,0.6)}
+.cell.o{color:#5df0ff;text-shadow:0 0 18px rgba(93,240,255,0.6)}
+.footer{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:13px}
+.score{background:linear-gradient(45deg,rgba(255,255,255,0.02),rgba(0,0,0,0.02));padding:8px 12px;border-radius:10px}
+.small{font-size:12px;color:#9ad7e5}
+.select{background:#061218;border-radius:10px;padding:8px;border:1px solid rgba(255,255,255,0.02);color:#cbeefc}
+.reset{background:linear-gradient(45deg,#ffb86b,#ff6b6b);color:#04141a}
+.note{font-size:12px;color:#98dbe8;margin-top:10px;text-align:center}
+@media(max-width:420px){.cell{font-size:34px}}
+</style>
+</head>
+<body>
+<div class="app" role="main">
+  <div class="header">
+    <div class="icon"><img src="icon-192.png" style="width:100%;height:100%;border-radius:10px"></div>
+    <div>
+      <div class="title">Neon Tic Tac Toe</div>
+      <div class="small">Gaming themed • Installable PWA</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="onep" class="btn neon">1 Player</button>
+    <button id="twop" class="btn neon2">2 Players</button>
+    <select id="difficulty" class="select" aria-label="Difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium">Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+    <button id="reset" class="btn reset">Reset</button>
+  </div>
+
+  <div id="board" class="board" aria-label="Game board"></div>
+
+  <div class="footer">
+    <div class="score">X: <span id="sx">0</span> &nbsp; | &nbsp; O: <span id="so">0</span></div>
+    <div class="small" id="status">Choose mode to start</div>
+  </div>
+
+  <div class="note">Tip: For best experience add to home screen (Install)</div>
+</div>
+
+<script>
+const boardEl = document.getElementById('board');
+const sx = document.getElementById('sx'), so = document.getElementById('so');
+const status = document.getElementById('status');
+const onep = document.getElementById('onep'), twop = document.getElementById('twop'), resetBtn = document.getElementById('reset');
+const difficulty = document.getElementById('difficulty');
+
+let state = Array(9).fill('');
+let turn = 'X';
+let playing = false;
+let onePlayer = false;
+let scores = {X:0, O:0};
+
+const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+function render(){
+  boardEl.innerHTML = '';
+  for(let i=0;i<9;i++){
+    const c = document.createElement('div');
+    c.className='cell';
+    if(state[i]) c.classList.add(state[i].toLowerCase());
+    c.dataset.i=i;
+    c.innerHTML = state[i] ? state[i] : '';
+    c.addEventListener('click', ()=> cellClick(i));
+    boardEl.appendChild(c);
+  }
+}
+function startOne(){
+  onePlayer=true; playing=true; state.fill(''); turn='X'; status.textContent='Your Turn (X)';
+  render();
+}
+function startTwo(){
+  onePlayer=false; playing=true; state.fill(''); turn='X'; status.textContent="Player X's Turn";
+  render();
+}
+function cellClick(i){
+  if(!playing || state[i]) return;
+  state[i]=turn;
+  render();
+  clickSound();
+  if(checkWin(turn)){
+    status.textContent = turn + ' Wins!';
+    scores[turn]++; updateScore(); playing=false; winSound();
+    return;
+  }
+  if(state.every(s=>s)){ status.textContent='Draw!'; drawSound(); playing=false; return;}
+  turn = turn==='X'?'O':'X';
+  status.textContent = onePlayer && turn==='O' ? 'Computer Turn' : ("Player "+turn+"'s Turn");
+  if(onePlayer && turn==='O') setTimeout(aiMove, 400);
+}
+function aiMove(){
+  let i;
+  const avail = state.map((v,idx)=>v===''?idx:null).filter(x=>x!==null);
+  if(difficulty.value==='easy') i = avail[Math.floor(Math.random()*avail.length)];
+  else if(difficulty.value==='medium') i = mediumAI(avail);
+  else i = minimax(state.slice(), 'O').index;
+  state[i]='O'; render(); clickSound();
+  if(checkWin('O')){ status.textContent='Computer Wins'; scores['O']++; updateScore(); playing=false; winSound(); return;}
+  if(state.every(s=>s)){ status.textContent='Draw!'; drawSound(); playing=false; return;}
+  turn='X'; status.textContent='Player X\'s Turn';
+}
+function mediumAI(avail){
+  for(const p of wins){
+    const vals = p.map(i=>state[i]);
+    if(vals.filter(v=>v==='O').length===2 && vals.includes('')) return p[vals.indexOf('')];
+  }
+  for(const p of wins){
+    const vals = p.map(i=>state[i]);
+    if(vals.filter(v=>v==='X').length===2 && vals.includes('')) return p[vals.indexOf('')];
+  }
+  return avail[Math.floor(Math.random()*avail.length)];
+}
+function checkWin(p){
+  return wins.some(c=>c.every(i=>state[i]===p));
+}
+function updateScore(){ sx.textContent=scores.X; so.textContent=scores.O; }
+function reset(){
+  state.fill(''); render(); playing=true; turn='X'; status.textContent='Player X\'s Turn';
+}
+onep.addEventListener('click', startOne);
+twop.addEventListener('click', startTwo);
+resetBtn.addEventListener('click', reset);
+
+render();
+
+const clickAudio = new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
+const winAudio = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
+const drawAudio = new Audio('https://actions.google.com/sounds/v1/cartoon/metal_hit.ogg');
+function clickSound(){ try{ clickAudio.currentTime=0; clickAudio.play(); }catch(e){} }
+function winSound(){ try{ winAudio.currentTime=0; winAudio.play(); }catch(e){} }
+function drawSound(){ try{ drawAudio.currentTime=0; drawAudio.play(); }catch(e){} }
+
+function minimax(boardState, player){
+  const avail = boardState.map((v,i)=>v===''?i:null).filter(x=>x!==null);
+  if(checkStaticWin(boardState,'X')) return {score:-10};
+  if(checkStaticWin(boardState,'O')) return {score:10};
+  if(avail.length===0) return {score:0};
+  let moves=[];
+  for(const idx of avail){
+    const move = {index:idx};
+    boardState[idx]=player;
+    const result = minimax(boardState, player==='O'?'X':'O');
+    move.score = result.score;
+    boardState[idx]='';
+    moves.push(move);
+  }
+  return player==='O' ? moves.reduce((a,b)=>a.score>b.score?a:b) : moves.reduce((a,b)=>a.score<b.score?a:b);
+}
+function checkStaticWin(b,p){
+  return wins.some(c=>c.every(i=>b[i]===p));
+}
+</script>
+</body>
+</html>
